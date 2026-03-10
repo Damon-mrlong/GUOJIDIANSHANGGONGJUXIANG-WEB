@@ -1,0 +1,2157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>国际电商部 · 综合运输与负荷分析 (V5.1)</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --accent:#007aff;
+    --accent-light:#5ac8fa;
+    --success:#34c759;
+    --warning:#ff9500;
+    --danger:#ff3b30;
+    --bg:#f2f2f7;
+    --card:#ffffff;
+    --muted:#8e8e93;
+    --border:#e5e5ea;
+    --shadow:0 4px 20px rgba(0,0,0,0.08);
+    --radius:16px;
+    --transition:all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body{
+    margin:0;
+    font-family:-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Roboto, "Helvetica Neue", Arial;
+    background:linear-gradient(135deg, #f2f2f7 0%, #e8e8ed 100%);
+    color:#1d1d1f;
+    line-height:1.5;
+    min-height:100vh;
+  }
+
+  /* 顶部标题栏 */
+  .header {
+    background:rgba(255,255,255,0.85);
+    backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border);
+    position:sticky;
+    top:0;
+    z-index:100;
+    padding:20px 40px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    box-shadow:0 2px 10px rgba(0,0,0,0.04);
+  }
+
+  .header h1 {
+    font-size:1.5rem;
+    font-weight:700;
+    color:#1d1d1f;
+    margin:0;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+
+  .header-subtitle {
+    font-size:0.9rem;
+    color:var(--muted);
+    font-weight:400;
+  }
+
+  .controls {
+    display:flex;
+    gap:12px;
+    align-items:center;
+  }
+
+  .btn {
+    background:var(--accent);
+    color:white;
+    border:none;
+    padding:10px 20px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    font-weight:600;
+    font-size:0.9rem;
+    transition:var(--transition);
+    box-shadow:0 2px 8px rgba(0,122,255,0.25);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .btn:hover {
+    background:var(--accent-light);
+    transform:translateY(-1px);
+    box-shadow:0 4px 12px rgba(0,122,255,0.35);
+  }
+
+  .btn:active {
+    transform:translateY(0);
+  }
+
+  .btn.secondary {
+    background:var(--card);
+    color:var(--accent);
+    border:1.5px solid var(--border);
+    box-shadow:0 1px 4px rgba(0,0,0,0.08);
+  }
+
+  .btn.secondary:hover {
+    background:var(--bg);
+    transform:translateY(-1px);
+    box-shadow:0 2px 8px rgba(0,0,0,0.12);
+  }
+
+  input[type="file"] {
+    display:none;
+  }
+
+  .file-label {
+    background:var(--card);
+    border:1.5px dashed var(--accent);
+    padding:10px 20px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    font-weight:600;
+    font-size:0.9rem;
+    color:var(--accent);
+    transition:var(--transition);
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .file-label:hover {
+    background:var(--bg);
+    border-style:solid;
+  }
+
+  /* 主容器 */
+  .container {
+    max-width:1400px;
+    margin:0 auto;
+    padding:40px;
+  }
+
+  /* 概览卡片区域 */
+  .overview-section {
+    margin-bottom:40px;
+  }
+
+  .section-title {
+    font-size:1.2rem;
+    font-weight:600;
+    margin-bottom:20px;
+    color:#1d1d1f;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+
+  .overview-cards {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+    gap:20px;
+    margin-bottom:20px;
+  }
+
+  .overview-card {
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:24px;
+    box-shadow:var(--shadow);
+    transition:var(--transition);
+    cursor:pointer;
+    border:1px solid var(--border);
+    position:relative;
+    overflow:hidden;
+  }
+
+  .overview-card::before {
+    content:'';
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    height:3px;
+    background:linear-gradient(90deg, var(--accent), var(--accent-light));
+    transform:translateX(-100%);
+    transition:var(--transition);
+  }
+
+  .overview-card:hover {
+    transform:translateY(-4px);
+    box-shadow:0 8px 30px rgba(0,0,0,0.12);
+  }
+
+  .overview-card:hover::before {
+    transform:translateX(0);
+  }
+
+  .overview-card-icon {
+    font-size:1.5rem;
+    margin-bottom:12px;
+    display:block;
+  }
+
+  .overview-card h3 {
+    font-size:0.9rem;
+    color:var(--muted);
+    font-weight:500;
+    margin:0 0 8px 0;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+  }
+
+  .overview-card .value {
+    font-size:2rem;
+    font-weight:700;
+    color:#1d1d1f;
+    margin:0;
+    line-height:1.2;
+  }
+
+  .overview-card .subtitle {
+    font-size:0.85rem;
+    color:var(--muted);
+    margin-top:8px;
+  }
+
+  /* 中部详情区域 */
+  .details-section {
+    margin-bottom:40px;
+  }
+
+  .details-content {
+    display:grid;
+    grid-template-columns:1fr 420px;
+    gap:20px;
+  }
+
+  .panel {
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    border:1px solid var(--border);
+    overflow:hidden;
+  }
+
+  .panel-header {
+    padding:20px 24px;
+    border-bottom:1px solid var(--border);
+    background:linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  }
+
+  .panel-title {
+    font-size:1.1rem;
+    font-weight:600;
+    margin:0;
+    color:#1d1d1f;
+  }
+
+  .panel-body {
+    padding:24px;
+  }
+
+  /* 标签页 */
+  .tabs {
+    display:flex;
+    gap:8px;
+    margin-bottom:20px;
+    border-bottom:1px solid var(--border);
+    padding-bottom:12px;
+  }
+
+  .tab {
+    background:transparent;
+    border:none;
+    padding:10px 16px;
+    border-radius:12px;
+    cursor:pointer;
+    font-weight:500;
+    color:var(--muted);
+    transition:var(--transition);
+    font-size:0.9rem;
+    position:relative;
+  }
+
+  .tab::after {
+    content:'';
+    position:absolute;
+    bottom:-12px;
+    left:50%;
+    transform:translateX(-50%) scaleX(0);
+    width:20px;
+    height:3px;
+    background:var(--accent);
+    border-radius:2px;
+    transition:var(--transition);
+  }
+
+  .tab:hover {
+    background:var(--bg);
+    color:var(--accent);
+  }
+
+  .tab.active {
+    background:var(--accent);
+    color:white;
+    box-shadow:0 2px 8px rgba(0,122,255,0.25);
+  }
+
+  .tab.active::after {
+    transform:translateX(-50%) scaleX(1);
+  }
+
+  /* 表格样式 */
+  .table-container {
+    overflow-x:auto;
+    border-radius:12px;
+    border:1px solid var(--border);
+  }
+
+  table {
+    width:100%;
+    border-collapse:collapse;
+    font-size:0.9rem;
+  }
+
+  th {
+    background:linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    color:#1d1d1f;
+    font-weight:600;
+    text-align:left;
+    padding:12px 16px;
+    border-bottom:2px solid var(--border);
+    white-space:nowrap;
+    position:sticky;
+    top:0;
+    z-index:10;
+  }
+
+  td {
+    padding:12px 16px;
+    border-bottom:1px solid var(--border);
+    color:#3a3a3c;
+  }
+
+  tr:hover td {
+    background:var(--bg);
+  }
+
+  tr.clickable {
+    cursor:pointer;
+    transition:var(--transition);
+  }
+
+  tr.clickable:hover td {
+    background:rgba(0,122,255,0.08);
+  }
+
+  tr.clickable td:first-child {
+    color:var(--accent);
+    font-weight:600;
+  }
+
+  /* 图表容器 */
+  .chart-container {
+    height:320px;
+    margin-bottom:20px;
+  }
+
+  .chart-small {
+    height:240px;
+  }
+
+  /* 人员负荷区域 */
+  .workload-section {
+    margin-bottom:40px;
+  }
+
+  .workload-grid {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
+  }
+
+  .person-card {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 20px;
+    background:var(--card);
+    border-radius:var(--radius);
+    border:1px solid var(--border);
+    transition:var(--transition);
+    cursor:pointer;
+    margin-bottom:12px;
+  }
+
+  .person-card:hover {
+    transform:translateX(4px);
+    box-shadow:0 4px 16px rgba(0,0,0,0.1);
+    border-color:var(--accent);
+  }
+
+  .person-info {
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+
+  .person-avatar {
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    background:linear-gradient(135deg, var(--accent), var(--accent-light));
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:white;
+    font-weight:600;
+    font-size:1.1rem;
+  }
+
+  .person-details h4 {
+    margin:0;
+    font-size:1rem;
+    font-weight:600;
+    color:#1d1d1f;
+  }
+
+  .person-details .meta {
+    font-size:0.85rem;
+    color:var(--muted);
+    margin-top:2px;
+  }
+
+  .person-workload {
+    text-align:right;
+  }
+
+  .workload-score {
+    font-size:1.5rem;
+    font-weight:700;
+    margin:0;
+  }
+
+  .workload-score.normal {
+    color:var(--success);
+  }
+
+  .workload-score.high {
+    color:var(--danger);
+  }
+
+  .workload-badge {
+    background:var(--bg);
+    padding:4px 8px;
+    border-radius:6px;
+    font-size:0.8rem;
+    font-weight:500;
+    margin-top:4px;
+    display:inline-block;
+  }
+
+  /* 模态框 */
+  .modal {
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    background:rgba(0,0,0,0.4);
+    backdrop-filter:blur(4px);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    padding:20px;
+  }
+
+  .modal.active {
+    display:flex;
+  }
+
+  .modal-content {
+    background:var(--card);
+    border-radius:var(--radius);
+    width:100%;
+    max-width:1000px;
+    max-height:85vh;
+    overflow:hidden;
+    box-shadow:0 20px 40px rgba(0,0,0,0.2);
+    border:1px solid var(--border);
+  }
+
+  .modal-header {
+    padding:24px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    background:linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+  }
+
+  .modal-title {
+    font-size:1.3rem;
+    font-weight:700;
+    margin:0;
+    color:#1d1d1f;
+  }
+
+  .modal-close {
+    background:transparent;
+    border:none;
+    font-size:1.5rem;
+    cursor:pointer;
+    color:var(--muted);
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:var(--transition);
+  }
+
+  .modal-close:hover {
+    background:var(--bg);
+    color:var(--danger);
+  }
+
+  .modal-tabs {
+    display:flex;
+    gap:0;
+    border-bottom:1px solid var(--border);
+    background:var(--bg);
+  }
+
+  .modal-tab {
+    background:transparent;
+    border:none;
+    padding:16px 24px;
+    cursor:pointer;
+    font-weight:500;
+    color:var(--muted);
+    transition:var(--transition);
+    border-bottom:3px solid transparent;
+    font-size:0.95rem;
+  }
+
+  .modal-tab:hover {
+    background:var(--card);
+    color:var(--accent);
+  }
+
+  .modal-tab.active {
+    background:var(--card);
+    color:var(--accent);
+    border-bottom-color:var(--accent);
+    font-weight:600;
+  }
+
+  .modal-body {
+    padding:24px;
+    max-height:calc(85vh - 200px);
+    overflow-y:auto;
+  }
+
+  .modal-tab-content {
+    display:none;
+  }
+
+  .modal-tab-content.active {
+    display:block;
+  }
+
+  /* 统计卡片 */
+  .stats-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+    gap:16px;
+    margin-bottom:24px;
+  }
+
+  .stat-card {
+    background:var(--bg);
+    padding:16px;
+    border-radius:12px;
+    border:1px solid var(--border);
+  }
+
+  .stat-card h4 {
+    font-size:0.85rem;
+    color:var(--muted);
+    margin:0 0 8px 0;
+    font-weight:500;
+  }
+
+  .stat-card .value {
+    font-size:1.3rem;
+    font-weight:700;
+    color:#1d1d1f;
+    margin:0;
+  }
+
+  .workload-stats-grid {
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:12px;
+    margin-bottom:16px;
+  }
+
+  .workload-stats-grid .stat-card {
+    padding:12px;
+    background:linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  }
+
+  .workload-stats-grid .stat-card h4 {
+    font-size:0.8rem;
+    margin:0 0 6px 0;
+  }
+
+  .workload-stats-grid .stat-card .value {
+    font-size:1.2rem;
+  }
+
+  /* 响应式 */
+  @media (max-width: 1200px) {
+    .details-content {
+      grid-template-columns:1fr;
+    }
+
+    .workload-grid {
+      grid-template-columns:1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .container {
+      padding:20px;
+    }
+
+    .header {
+      padding:16px 20px;
+      flex-direction:column;
+      gap:16px;
+    }
+
+    .overview-cards {
+      grid-template-columns:1fr;
+    }
+  }
+
+  /* 加载动画 */
+  @keyframes pulse {
+    0%, 100% { opacity:1; }
+    50% { opacity:0.5; }
+  }
+
+  .loading {
+    animation:pulse 1.5s ease-in-out infinite;
+  }
+
+  /* 工具提示 */
+  .tooltip {
+    position:relative;
+    display:inline-block;
+  }
+
+  .tooltip .tooltiptext {
+    visibility:hidden;
+    width:200px;
+    background-color:#333;
+    color:#fff;
+    text-align:center;
+    border-radius:8px;
+    padding:8px;
+    position:absolute;
+    z-index:1;
+    bottom:125%;
+    left:50%;
+    margin-left:-100px;
+    opacity:0;
+    transition:opacity 0.3s;
+    font-size:0.8rem;
+  }
+
+  .tooltip:hover .tooltiptext {
+    visibility:visible;
+    opacity:1;
+  }
+</style>
+</head>
+<body>
+
+<!-- 顶部标题栏 -->
+<header class="header">
+  <div>
+    <h1>🚢 国际电商部</h1>
+    <div class="header-subtitle">综合运输与负荷分析</div>
+  </div>
+  <div class="controls">
+    <label class="file-label">
+      <input id="file-shipment" type="file" accept=".csv,.xlsx" />
+      📁 上传台账数据
+    </label>
+    <label class="file-label">
+      <input id="file-workload" type="file" accept=".csv" />
+      ⏱️ 上传个人负荷数据
+    </label>
+    <button class="btn secondary" id="resetBtn">
+      🔄 恢复示例数据
+    </button>
+  </div>
+</header>
+
+<!-- 主容器 -->
+<main class="container">
+
+  <!-- 概览区域 -->
+  <section class="overview-section">
+    <h2 class="section-title">📊 当前周期总览</h2>
+    <div class="overview-cards">
+      <div class="overview-card" id="shipmentsCard">
+        <span class="overview-card-icon">🚢</span>
+        <h3>运输总数</h3>
+        <p class="value" id="totalShipments">--</p>
+        <div class="subtitle">按订单计</div>
+      </div>
+      <div class="overview-card">
+        <span class="overview-card-icon">💰</span>
+        <h3>总货值</h3>
+        <p class="value" id="totalValue">--</p>
+        <div class="subtitle">CNY / USD</div>
+      </div>
+      <div class="overview-card">
+        <span class="overview-card-icon">📦</span>
+        <h3>托盘总数</h3>
+        <p class="value" id="totalPallets">--</p>
+        <div class="subtitle">托盘数</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 中部详情区域 -->
+  <section class="details-section">
+    <h2 class="section-title">📈 分类视图与动态图表</h2>
+    <div class="details-content">
+      <!-- 左侧表格区域 -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 class="panel-title">数据分类详情</h3>
+        </div>
+        <div class="panel-body">
+          <div class="tabs">
+            <button class="tab active" data-field="品牌名称">🏷️ 按品牌</button>
+            <button class="tab" data-field="起运港">🌍 按起运港</button>
+            <button class="tab" data-field="目的港">🎯 按目的港</button>
+            <button class="tab" data-field="运输工具">✈️ 按运输方式</button>
+            <button class="tab" data-field="是否危险品">☢️ 按是否危险品</button>
+            <button class="tab" data-field="物流对接人">👤 按物流对接人</button>
+          </div>
+          <div class="table-container">
+            <table id="mainTable">
+              <thead id="tableHead"></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧图表区域 -->
+      <div>
+        <div class="panel">
+          <div class="panel-header">
+            <h3 class="panel-title" id="chartTitle">各品牌运输数与货值</h3>
+          </div>
+          <div class="panel-body">
+            <div class="chart-container" id="mainChart"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 底部人员负荷区域 -->
+  <section class="workload-section">
+    <h2 class="section-title">👥 团队结构与个人负荷</h2>
+    <div class="workload-grid">
+      <!-- 左侧人员列表 -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 class="panel-title">物流对接人负荷指数</h3>
+        </div>
+        <div class="panel-body">
+          <div id="personList"></div>
+        </div>
+      </div>
+
+      <!-- 右侧负荷图表 -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 class="panel-title">人员负荷对比</h3>
+        </div>
+        <div class="panel-body">
+          <!-- 团队统计卡片 -->
+          <div class="workload-stats-grid">
+            <div class="stat-card">
+              <h4>团队总人数</h4>
+              <p class="value" id="teamMemberCount">--</p>
+            </div>
+            <div class="stat-card">
+              <h4>团队平均工时</h4>
+              <p class="value" id="teamAvgWorkload">--</p>
+            </div>
+            <div class="stat-card">
+              <h4>超负荷人数</h4>
+              <p class="value" id="highLoadCount">--</p>
+            </div>
+            <div class="stat-card">
+              <h4>团队总工时</h4>
+              <p class="value" id="teamTotalWorkload">--</p>
+            </div>
+          </div>
+          <!-- 柱状图 -->
+          <div class="chart-container chart-small" id="workloadChart"></div>
+          <!-- 工时构成饼图 -->
+          <div class="chart-container chart-small" id="workloadPieChart"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- 品牌详情模态框 -->
+<div id="brandModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalTitle">品牌详情</h3>
+      <button class="modal-close" onclick="closeModal('brandModal')">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" data-tab="transport">运输方式占比</button>
+      <button class="modal-tab" data-tab="cost">货值趋势</button>
+      <button class="modal-tab" data-tab="transportCost">运输成本分析</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-tab-content active" id="transportTab">
+        <div class="chart-container" id="transportChart"></div>
+      </div>
+      <div class="modal-tab-content" id="costTab">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h4>总货值</h4>
+            <p class="value" id="brandTotalValue">--</p>
+          </div>
+          <div class="stat-card">
+            <h4>运输笔数</h4>
+            <p class="value" id="brandShipCount">--</p>
+          </div>
+          <div class="stat-card">
+            <h4>平均每公斤成本</h4>
+            <p class="value" id="brandAvgCost">--</p>
+          </div>
+        </div>
+        <div class="chart-container" id="costTrendChart"></div>
+      </div>
+      <div class="modal-tab-content" id="transportCostTab">
+        <div class="stats-grid" id="transportCostStats">
+          <!-- 动态插入各运输方式的平均成本 -->
+        </div>
+        <div class="chart-container" id="transportCostChart"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 人员详情模态框 -->
+<div id="personModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title" id="personModalTitle">人员详情</h3>
+      <button class="modal-close" onclick="closeModal('personModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <h4>运输笔数</h4>
+          <p class="value" id="personShipCount">--</p>
+        </div>
+        <div class="stat-card">
+          <h4>总货值</h4>
+          <p class="value" id="personTotalValue">--</p>
+        </div>
+        <div class="stat-card">
+          <h4>负责品牌数</h4>
+          <p class="value" id="personBrandCount">--</p>
+        </div>
+        <div class="stat-card">
+          <h4>负荷指数</h4>
+          <p class="value" id="personWorkloadScore">--</p>
+        </div>
+      </div>
+
+      <h4 style="margin-top:24px; margin-bottom:16px; color:#1d1d1f;">负荷指数构成</h4>
+      <div class="chart-container chart-small" id="personWorkloadChart"></div>
+
+      <h4 style="margin-top:24px; margin-bottom:16px; color:#1d1d1f;">负责品牌明细</h4>
+      <div class="table-container">
+        <table id="personBrandTable">
+          <thead>
+            <tr>
+              <th>品牌</th>
+              <th>运输笔数</th>
+              <th>货值</th>
+              <th>占比</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ====== 数据定义 ======
+let shipmentsData = [];              // 台账数据
+let workloadData = {};               // 个人负荷数据（来自CSV）
+let brandContactMap = {};            // 品牌对接人映射
+let currentCategory = '品牌名称';
+let expandedPerson = null;           // 当前展开的物流对接人（用于分类视图）
+
+// V23工时计算配置项（可调整）
+const WORKLOAD_CONFIG = {
+  EXCEPTION_HOURS_PER_CASE: 10,    // 异常工时系数：一票异常 = 10小时
+  EMAIL_HOURS_PER_CASE: 10/60,     // 邮件工时系数：一封邮件 = 10分钟 = 0.167小时
+  OMS_HOURS_PER_90: 1,             // 台账工时系数：每90元服务费 = 1小时
+  VALUE_ADDED_HOURS_PER_90: 1,     // 增值工时系数：每90元增值 = 1小时
+  WARNING_THRESHOLD: 174,          // 预警阈值：>174小时
+  USD_EXCHANGE_RATE: 7.1           // 美元汇率：1 USD = 7.1 CNY
+};
+
+// 打印汇率配置日志
+console.log('汇率配置: 1 USD = ' + WORKLOAD_CONFIG.USD_EXCHANGE_RATE + ' CNY (可在WORKLOAD_CONFIG中修改)');
+
+// 硬编码品牌对接人映射数据（从品牌对接人信息表.csv导入）
+const HARDCODED_BRAND_CONTACT_MAP = {
+  "桃子": ["Albion", "Balmonds", "CELLEX-C", "hince", "ikoo", "LAKME", "LOOkX", "mesoestetic", "nescens", "parissa", "SALT&STONE", "True Botanicals", "ZELENS"],
+  "寻觅": ["3INA", "Anubis", "apriori", "AYUNA LESS IS BEAUTY", "BioPoint", "BIRETIX", "Bjorn Axen", "BLANX", "CHILLY", "Ciate", "CODAGE", "Comfort Zone", "Dr.Spiller", "DS LABORATORIES", "Henné Organics", "Hermetica PARIS", "IRALTONE", "ISANA", "Laboratoire de Biarritz", "Legology", "Manage Your Skin", "MARIA GALLAND", "Mila Moursi", "NEORETIN", "NOBLE ISLE", "nuggela&sul…", "oolaboo", "PREP", "REVITALASH COSMETICS", "Skin Regimen", "SLICK GORILLA", "Trawenmoor", "WE ARE PARADOXX"],
+  "小龙": ["3LAB", "bareMinerals", "BioNike", "Code8", "DR SEBAGH", "ENDOTA", "Glo Skin Beauty", "Hapa Kristin", "KIKO", "LIERAC", "Lord&Berry", "LUMENE", "Margaret Dabbs", "ORLANE幽兰", "PERLIER"],
+  "丽桃": ["AMOUAGE", "ARKO", "Bois 1920", "Detaille", "Ellis Brooklyn", "Jo Loves", "JUICE BEAUTY", "LABEAU FRAGRANCES", "LENGLING", "Les Bains Guerbois", "MAJDA BEKKALI", "MONTALE", "MOON", "nobile1942", "RéVive", "Rubeus Milano"],
+  "诺涵": ["Bondi Sands", "Dr.K", "EviDenS de Beauté伊菲丹", "LIOVERITE", "NATASHA DENONA", "Neoderma", "Oggi Otto", "Rohr Remedy", "SINN PURETE", "THANK YOU FARMER", "WHITE ICHIGO"],
+  "茼蒿": ["ADOPT'", "Amazing Cosmetics", "Aspinal of London", "BEC", "BLINC", "CARNER BARCELONA", "EISENBERG", "Hawkins&Brimble", "JONZAC", "MASQUE MILANO", "MEMO", "Pantheon Roma", "PERCY & REED", "Police", "Sarah Chapman", "The Merchant of Venice", "TheDifferentCompany", "Valeur Absolute"],
+  "文嘉": ["ESI", "LUBRIDERM", "Neutrogena露得清", "Pier Augé佩尔赫乔", "Rogaine", "城野医生"],
+  "苹果": ["Fenty Beauty"],
+  "乐嘟": ["Milani"],
+  "青团": ["暂无品牌"]
+};
+
+// 加载品牌对接人信息表
+function loadBrandContactMap() {
+  // 直接使用硬编码数据，无需fetch
+  brandContactMap = JSON.parse(JSON.stringify(HARDCODED_BRAND_CONTACT_MAP));
+  console.log('品牌对接人映射表加载完成:', brandContactMap);
+}
+
+// 虚拟数据生成
+function generateVirtualData() {
+  const brands = ['兰蔻', '欧莱雅', 'YSL', '阿玛尼', '迪奥', '香奈儿', '雅诗兰黛', 'SK-II'];
+  const startPorts = ['巴黎', '汉堡', '纽约', '东京', '伦敦', '米兰', '悉尼', '首尔'];
+  const endPorts = ['上海', '深圳', '广州', '宁波', '青岛', '天津', '大连', '厦门'];
+  const transportModes = ['空运', '海运', '铁路', '公路'];
+  const dangerStatus = ['是', '否'];
+  const persons = ['张三', '李四', '王五', '赵六', '陈七', '刘八'];
+
+  const data = [];
+  for (let i = 0; i < 50; i++) {
+    const brand = brands[Math.floor(Math.random() * brands.length)];
+    const startPort = startPorts[Math.floor(Math.random() * startPorts.length)];
+    const endPort = endPorts[Math.floor(Math.random() * endPorts.length)];
+    const mode = transportModes[Math.floor(Math.random() * transportModes.length)];
+    const danger = dangerStatus[Math.floor(Math.random() * dangerStatus.length)];
+    const person = persons[Math.floor(Math.random() * persons.length)];
+
+    const value = Math.floor(Math.random() * 300000) + 50000;
+    const cost = Math.floor(Math.random() * 20000) + 3000;
+    const weight = Math.floor(Math.random() * 5000) + 500;
+    const pallets = Math.floor(Math.random() * 20) + 1;
+    const unitCost = (cost / weight).toFixed(2);
+
+    // 生成启运日期（比创建时间更早）
+    const startDate = new Date(2025, 9, Math.floor(Math.random() * 28) + 1); // 2025-10
+    const createDate = new Date(startDate.getTime() + Math.random() * 7 * 24 * 60 * 60 * 1000); // 创建时间比启运日期晚0-7天
+
+    data.push({
+      '品牌名称': brand,
+      '起运港': startPort,
+      '目的港': endPort,
+      '运输工具': mode,
+      '是否危险品': danger,
+      '物流对接人': person,
+      '托盘数': pallets,
+      '报关金额(CNY)': value,
+      '实际总费用（CNY）': cost,
+      '实际每公斤国际物流费（CNY)': parseFloat(unitCost),
+      '启运日期': startDate.toISOString().split('T')[0],
+      '创建时间': createDate.toISOString().split('T')[0]
+    });
+  }
+  return data;
+}
+
+// ====== 工具函数 ======
+function safeNum(value) {
+  return isNaN(Number(value)) ? 0 : Number(value);
+}
+
+function formatCurrency(value) {
+  return '¥' + safeNum(value).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function formatNumber(value) {
+  return safeNum(value).toLocaleString('zh-CN');
+}
+
+// ====== 图表管理 ======
+const charts = {};
+
+function initChart(elementId, option = {}) {
+  const dom = document.getElementById(elementId);
+  if (!dom) return null;
+
+  if (charts[elementId]) {
+    charts[elementId].dispose();
+  }
+
+  charts[elementId] = echarts.init(dom);
+  if (Object.keys(option).length > 0) {
+    charts[elementId].setOption(option);
+  }
+
+  return charts[elementId];
+}
+
+function resizeCharts() {
+  Object.values(charts).forEach(chart => {
+    if (chart && !chart.isDisposed()) {
+      chart.resize();
+    }
+  });
+}
+
+// ====== 主要渲染函数 ======
+function renderOverview() {
+  const totalShipments = shipmentsData.length;
+  const totalValue = shipmentsData.reduce((sum, item) => sum + safeNum(item['报关金额(CNY)']), 0);
+  const totalPallets = shipmentsData.reduce((sum, item) => sum + safeNum(item['托盘数']), 0);
+  const usdValue = (totalValue / WORKLOAD_CONFIG.USD_EXCHANGE_RATE).toFixed(0);
+
+  document.getElementById('totalShipments').textContent = formatNumber(totalShipments);
+  document.getElementById('totalValue').innerHTML = `
+    <div style="font-size: 2rem; font-weight: 700; color: #1d1d1f;">${formatCurrency(totalValue)}</div>
+    <div style="font-size: 0.8em; color: #8e8e93;">约 ${formatNumber(usdValue)} USD</div>
+  `;
+  document.getElementById('totalPallets').textContent = formatNumber(totalPallets);
+}
+
+function renderCategoryTable() {
+  // 重置物流对接人分类状态（当切换到非物流对接人分类时）
+  if (currentCategory !== '物流对接人') {
+    expandedPerson = null;
+  }
+
+  const agg = {};
+
+  shipmentsData.forEach(item => {
+    const key = item[currentCategory] || '(空)';
+    if (!agg[key]) {
+      agg[key] = {
+        count: 0,
+        value: 0,
+        pallets: 0,
+        records: []
+      };
+    }
+    agg[key].count++;
+    agg[key].value += safeNum(item['报关金额(CNY)']);
+    agg[key].pallets += safeNum(item['托盘数']);
+    agg[key].records.push(item);
+  });
+
+  // 排序
+  const sortedKeys = Object.keys(agg).sort((a, b) => agg[b].count - agg[a].count);
+
+  // 渲染表格
+  const thead = document.getElementById('tableHead');
+  const tbody = document.getElementById('tableBody');
+
+  thead.innerHTML = `
+    <tr>
+      <th>${currentCategory}</th>
+      <th>运输数</th>
+      <th>货值(CNY)</th>
+      <th>托盘数</th>
+    </tr>
+  `;
+
+  tbody.innerHTML = '';
+
+  // 物流对接人分类：支持两级展开
+  if (currentCategory === '物流对接人') {
+    sortedKeys.forEach(person => {
+      const personRow = document.createElement('tr');
+      personRow.className = 'clickable';
+      personRow.innerHTML = `
+        <td>${person} ${expandedPerson === person ? '▲' : '▼'}</td>
+        <td>${formatNumber(agg[person].count)}</td>
+        <td>${formatCurrency(agg[person].value)}</td>
+        <td>${formatNumber(agg[person].pallets)}</td>
+      `;
+
+      personRow.onclick = () => {
+        if (expandedPerson === person) {
+          expandedPerson = null;
+        } else {
+          expandedPerson = person;
+        }
+        renderCategoryTable(); // 重新渲染以更新展开状态
+      };
+
+      tbody.appendChild(personRow);
+
+      // 如果当前人员已展开，显示品牌列表
+      if (expandedPerson === person) {
+        const brandAgg = {};
+        agg[person].records.forEach(record => {
+          const brand = record['品牌名称'];
+          if (!brandAgg[brand]) {
+            brandAgg[brand] = {
+              count: 0,
+              value: 0,
+              pallets: 0,
+              records: []
+            };
+          }
+          brandAgg[brand].count++;
+          brandAgg[brand].value += safeNum(record['报关金额(CNY)']);
+          brandAgg[brand].pallets += safeNum(record['托盘数']);
+          brandAgg[brand].records.push(record);
+        });
+
+        const sortedBrands = Object.keys(brandAgg).sort((a, b) => brandAgg[b].count - brandAgg[a].count);
+
+        sortedBrands.forEach(brand => {
+          const brandRow = document.createElement('tr');
+          brandRow.className = 'clickable';
+          const percentage = ((brandAgg[brand].count / agg[person].count) * 100).toFixed(1);
+          brandRow.innerHTML = `
+            <td style="padding-left: 40px; color: #666;">${brand}</td>
+            <td>${formatNumber(brandAgg[brand].count)}</td>
+            <td>${formatCurrency(brandAgg[brand].value)}</td>
+            <td>${formatNumber(brandAgg[brand].pallets)} (${percentage}%)</td>
+          `;
+
+          brandRow.onclick = () => {
+            openBrandModal(brand);
+          };
+
+          tbody.appendChild(brandRow);
+        });
+      }
+    });
+  } else {
+    // 其他分类：直接显示
+    sortedKeys.forEach(key => {
+      const row = document.createElement('tr');
+      row.className = 'clickable';
+      row.innerHTML = `
+        <td>${key}</td>
+        <td>${formatNumber(agg[key].count)}</td>
+        <td>${formatCurrency(agg[key].value)}</td>
+        <td>${formatNumber(agg[key].pallets)}</td>
+      `;
+
+      row.onclick = () => {
+        if (currentCategory === '品牌名称') {
+          openBrandModal(key);
+        } else {
+          showCategoryDetails(key, agg[key].records);
+        }
+      };
+
+      tbody.appendChild(row);
+    });
+  }
+
+  // 更新右侧图表
+  updateMainChart(sortedKeys, agg);
+}
+
+function updateMainChart(labels, data) {
+  const chartTitle = document.getElementById('chartTitle');
+  let chartOption;
+
+  if (currentCategory === '品牌名称') {
+    chartTitle.textContent = '各品牌运输数与货值';
+    chartOption = {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'cross' }
+      },
+      legend: {
+        data: ['运输数', '货值']
+      },
+      xAxis: {
+        type: 'category',
+        data: labels,
+        axisLabel: { rotate: 45 }
+      },
+      yAxis: [
+        {
+          type: 'value',
+          name: '运输数',
+          position: 'left'
+        },
+        {
+          type: 'value',
+          name: '货值(CNY)',
+          position: 'right',
+          axisLabel: { formatter: value => formatCurrency(value) }
+        }
+      ],
+      series: [
+        {
+          name: '运输数',
+          type: 'bar',
+          data: labels.map(label => data[label].count),
+          itemStyle: { color: '#007aff' }
+        },
+        {
+          name: '货值',
+          type: 'line',
+          yAxisIndex: 1,
+          data: labels.map(label => data[label].value),
+          itemStyle: { color: '#34c759' }
+        }
+      ]
+    };
+  } else if (currentCategory === '运输工具') {
+    chartTitle.textContent = '各运输方式单公斤物流费用';
+    const avgCosts = labels.map(label => {
+      const records = data[label].records;
+      const totalCost = records.reduce((sum, r) => sum + safeNum(r['实际每公斤国际物流费（CNY)']), 0);
+      return totalCost / records.length;
+    });
+
+    chartOption = {
+      tooltip: {
+        trigger: 'axis',
+        formatter: function(params) {
+          const data = params[0];
+          return `${data.name}<br/>平均每公斤成本: ${formatCurrency(data.value)}`;
+        }
+      },
+      xAxis: {
+        type: 'category',
+        data: labels
+      },
+      yAxis: {
+        type: 'value',
+        name: '每公斤成本(CNY)',
+        axisLabel: { formatter: value => formatCurrency(value) }
+      },
+      series: [{
+        type: 'line',
+        data: avgCosts,
+        smooth: true,
+        itemStyle: { color: '#ff9500' },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(255,149,0,0.3)' },
+              { offset: 1, color: 'rgba(255,149,0,0.1)' }
+            ]
+          }
+        }
+      }]
+    };
+  } else {
+    chartTitle.textContent = `${currentCategory}分布`;
+    chartOption = {
+      tooltip: {
+        trigger: 'item',
+        formatter: '{a} <br/>{b}: {c} ({d}%)'
+      },
+      series: [{
+        name: currentCategory,
+        type: 'pie',
+        radius: ['40%', '70%'],
+        data: labels.map(label => ({
+          value: data[label].count,
+          name: label
+        })),
+        emphasis: {
+          itemStyle: {
+            shadowBlur: 10,
+            shadowOffsetX: 0,
+            shadowColor: 'rgba(0, 0, 0, 0.5)'
+          }
+        }
+      }]
+    };
+  }
+
+  initChart('mainChart', chartOption);
+}
+
+function showCategoryDetails(category, records) {
+  // 按品牌分组显示
+  const brandAgg = {};
+  records.forEach(record => {
+    const brand = record['品牌名称'];
+    if (!brandAgg[brand]) {
+      brandAgg[brand] = { count: 0, value: 0 };
+    }
+    brandAgg[brand].count++;
+    brandAgg[brand].value += safeNum(record['报关金额(CNY)']);
+  });
+
+  const thead = document.getElementById('tableHead');
+  const tbody = document.getElementById('tableBody');
+
+  thead.innerHTML = `
+    <tr>
+      <th>品牌</th>
+      <th>运输数</th>
+      <th>货值(CNY)</th>
+    </tr>
+  `;
+
+  tbody.innerHTML = '';
+  Object.keys(brandAgg).forEach(brand => {
+    const row = document.createElement('tr');
+    row.className = 'clickable';
+    row.innerHTML = `
+      <td>${brand}</td>
+      <td>${formatNumber(brandAgg[brand].count)}</td>
+      <td>${formatCurrency(brandAgg[brand].value)}</td>
+    `;
+    row.onclick = () => openBrandModal(brand);
+    tbody.appendChild(row);
+  });
+
+  // 更新图表为品牌分布饼图
+  const chartOption = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{a} <br/>{b}: {c} ({d}%)'
+    },
+    series: [{
+      name: '品牌分布',
+      type: 'pie',
+      radius: ['40%', '70%'],
+      data: Object.keys(brandAgg).map(brand => ({
+        value: brandAgg[brand].count,
+        name: brand
+      }))
+    }]
+  };
+
+  initChart('mainChart', chartOption);
+}
+
+function renderWorkloadSection() {
+  const personAgg = {};
+
+  // 处理台账数据：计算台账工时
+  shipmentsData.forEach(item => {
+    const person = item['物流对接人'] || '(未标注)';
+    if (!personAgg[person]) {
+      personAgg[person] = {
+        count: 0,
+        value: 0,
+        pallets: 0,
+        brands: {},
+        omsServiceFee: 0  // OMS服务费（用于计算台账工时）
+      };
+    }
+    personAgg[person].count++;
+    personAgg[person].value += safeNum(item['报关金额(CNY)']);
+    personAgg[person].pallets += safeNum(item['托盘数']);
+    personAgg[person].omsServiceFee += safeNum(item['服务费']) || 0;  // BN列服务费
+
+    const brand = item['品牌名称'];
+    if (!personAgg[person].brands[brand]) {
+      personAgg[person].brands[brand] = 0;
+    }
+    personAgg[person].brands[brand]++;
+  });
+
+  // 合并CSV数据中的工时
+  const workloadList = [];
+  const allPersons = new Set([
+    ...Object.keys(personAgg),
+    ...Object.keys(workloadData)
+  ]);
+
+  allPersons.forEach(person => {
+    const shipData = personAgg[person] || {
+      count: 0,
+      value: 0,
+      pallets: 0,
+      brands: {},
+      omsServiceFee: 0
+    };
+
+    const csvData = workloadData[person] || {
+      增值工时: 0,
+      异常工时: 0,
+      邮件工时: 0,
+      项目工时: 0
+    };
+
+    // 计算各项工时
+    const 台账工时 = shipData.omsServiceFee / 90;
+    const 增值工时 = safeNum(csvData.增值工时);
+    const 异常工时 = safeNum(csvData.异常工时);
+    const 邮件工时 = safeNum(csvData.邮件工时);
+    const 项目工时 = safeNum(csvData.项目工时);
+
+    // 计算总工时
+    const 总工时 = 台账工时 + 增值工时 + 异常工时 + 邮件工时 + 项目工时;
+
+    workloadList.push({
+      name: person,
+      count: shipData.count,
+      value: shipData.value,
+      pallets: shipData.pallets,
+      brands: shipData.brands,
+      台账工时,
+      增值工时,
+      异常工时,
+      邮件工时,
+      项目工时,
+      总工时
+    });
+  });
+
+  // 排序（按总工时降序）
+  workloadList.sort((a, b) => b.总工时 - a.总工时);
+
+  // 渲染人员列表
+  const personList = document.getElementById('personList');
+  personList.innerHTML = '';
+
+  workloadList.forEach(person => {
+    const personCard = document.createElement('div');
+    personCard.className = 'person-card';
+    personCard.onclick = () => openPersonModal(person);
+
+    const isHighLoad = person.总工时 > WORKLOAD_CONFIG.WARNING_THRESHOLD;
+    // 品牌数量：优先使用品牌对接人表中的品牌数
+    const brandCount = brandContactMap[person.name]?.length || 0;
+
+    personCard.innerHTML = `
+      <div class="person-info">
+        <div class="person-avatar">${person.name[0]}</div>
+        <div class="person-details">
+          <h4>${person.name}</h4>
+          <div class="meta">
+            品牌 ${brandCount} | 笔数 ${person.count} | 货值 ${formatCurrency(person.value)}
+          </div>
+        </div>
+      </div>
+      <div class="person-workload">
+        <div class="workload-score ${isHighLoad ? 'high' : 'normal'}">${person.总工时.toFixed(1)}小时</div>
+        <div class="workload-badge" style="background: ${isHighLoad ? '#ffe5e5' : '#e8f5e8'}; color: ${isHighLoad ? '#d32f2f' : '#2e7d32'}">
+          ${isHighLoad ? '⚠️ 超负荷' : '正常'}
+        </div>
+      </div>
+    `;
+
+    personList.appendChild(personCard);
+  });
+
+  // 渲染团队统计数据
+  renderTeamStats(workloadList);
+
+  // 渲染负荷对比图表
+  renderWorkloadChart(workloadList);
+
+  // 渲染工时构成饼图
+  renderWorkloadPieChart(workloadList);
+}
+
+function renderWorkloadChart(workloadData) {
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: function(params) {
+        const data = params[0];
+        const person = workloadData[data.dataIndex];
+        return `${person.name}<br/>总工时: ${person.总工时.toFixed(1)}小时`;
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: workloadData.map(p => p.name),
+      axisLabel: { rotate: 45 }
+    },
+    yAxis: {
+      type: 'value',
+      name: '总工时(小时)'
+    },
+    series: [{
+      type: 'bar',
+      data: workloadData.map(p => ({
+        value: p.总工时.toFixed(1),
+        itemStyle: {
+          color: p.总工时 > WORKLOAD_CONFIG.WARNING_THRESHOLD ? '#ff3b30' : '#34c759'
+        }
+      })),
+      label: {
+        show: true,
+        position: 'top',
+        formatter: '{c}h'
+      }
+    }]
+  };
+
+  initChart('workloadChart', option);
+}
+
+function renderTeamStats(workloadList) {
+  // 计算团队统计数据
+  const totalMembers = workloadList.length;
+  const totalWorkload = workloadList.reduce((sum, p) => sum + p.总工时, 0);
+  const avgWorkload = totalWorkload / totalMembers;
+  const highLoadCount = workloadList.filter(p => p.总工时 > WORKLOAD_CONFIG.WARNING_THRESHOLD).length;
+
+  // 更新UI
+  document.getElementById('teamMemberCount').textContent = formatNumber(totalMembers);
+  document.getElementById('teamAvgWorkload').textContent = `${avgWorkload.toFixed(1)}h`;
+  document.getElementById('highLoadCount').textContent = `${highLoadCount}人`;
+  document.getElementById('teamTotalWorkload').textContent = `${totalWorkload.toFixed(1)}h`;
+}
+
+function renderWorkloadPieChart(workloadList) {
+  // 计算各项工时总和
+  let total台账工时 = 0;
+  let total增值工时 = 0;
+  let total异常工时 = 0;
+  let total邮件工时 = 0;
+  let total项目工时 = 0;
+
+  workloadList.forEach(person => {
+    total台账工时 += person.台账工时 || 0;
+    total增值工时 += person.增值工时 || 0;
+    total异常工时 += person.异常工时 || 0;
+    total邮件工时 += person.邮件工时 || 0;
+    total项目工时 += person.项目工时 || 0;
+  });
+
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: function(params) {
+        const value = params.value || 0;
+        return `${params.name}<br/>${value.toFixed(1)}小时 (${params.percent}%)`;
+      }
+    },
+    legend: {
+      orient: 'vertical',
+      right: 'right',
+      top: 'center'
+    },
+    series: [{
+      name: '工时构成',
+      type: 'pie',
+      radius: ['40%', '65%'],
+      center: ['35%', '50%'],
+      data: [
+        { value: total台账工时, name: '台账工时' },
+        { value: total增值工时, name: '增值工时' },
+        { value: total异常工时, name: '异常工时' },
+        { value: total邮件工时, name: '邮件工时' },
+        { value: total项目工时, name: '项目工时' }
+      ],
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      }
+    }]
+  };
+
+  initChart('workloadPieChart', option);
+}
+
+// ====== 模态框功能 ======
+function openBrandModal(brand) {
+  const modal = document.getElementById('brandModal');
+  const modalTitle = document.getElementById('modalTitle');
+  modalTitle.textContent = `${brand} - 品牌详情`;
+
+  const brandData = shipmentsData.filter(item => item['品牌名称'] === brand);
+
+  // 更新货值统计
+  const totalValue = brandData.reduce((sum, item) => sum + safeNum(item['报关金额(CNY)']), 0);
+  const avgCost = brandData.reduce((sum, item) => sum + safeNum(item['实际每公斤国际物流费（CNY)']), 0) / brandData.length;
+
+  document.getElementById('brandTotalValue').textContent = formatCurrency(totalValue);
+  document.getElementById('brandShipCount').textContent = formatNumber(brandData.length);
+  document.getElementById('brandAvgCost').textContent = formatCurrency(avgCost);
+
+  // 渲染运输方式占比
+  renderTransportChart(brandData);
+
+  // 渲染货值趋势（使用启运日期）
+  renderCostTrendChart(brandData);
+
+  // 渲染运输成本分析（各运输方式的成本曲线图）
+  renderTransportCostChart(brandData);
+
+  // 显示模态框
+  modal.classList.add('active');
+
+  // 延迟resize以确保图表正确渲染
+  setTimeout(resizeCharts, 100);
+}
+
+function renderTransportChart(brandData) {
+  const transportAgg = {};
+  brandData.forEach(item => {
+    const mode = item['运输工具'];
+    if (!transportAgg[mode]) {
+      transportAgg[mode] = 0;
+    }
+    transportAgg[mode]++;
+  });
+
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{a} <br/>{b}: {c} ({d}%)'
+    },
+    series: [{
+      name: '运输方式',
+      type: 'pie',
+      radius: ['30%', '70%'],
+      data: Object.keys(transportAgg).map(mode => ({
+        value: transportAgg[mode],
+        name: mode
+      }))
+    }]
+  };
+
+  initChart('transportChart', option);
+}
+
+function renderCostTrendChart(brandData) {
+  const sortedData = brandData.sort((a, b) => new Date(a['启运日期']) - new Date(b['启运日期']));
+
+  const option = {
+    tooltip: {
+      trigger: 'axis'
+    },
+    xAxis: {
+      type: 'category',
+      data: sortedData.map(item => item['启运日期'])
+    },
+    yAxis: {
+      type: 'value',
+      name: '每公斤成本(CNY)',
+      axisLabel: { formatter: value => formatCurrency(value) }
+    },
+    series: [{
+      type: 'line',
+      data: sortedData.map(item => safeNum(item['实际每公斤国际物流费（CNY)'])),
+      smooth: true,
+      itemStyle: { color: '#007aff' },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: 'rgba(0,122,255,0.3)' },
+            { offset: 1, color: 'rgba(0,122,255,0.1)' }
+          ]
+        }
+      }
+    }]
+  };
+
+  initChart('costTrendChart', option);
+}
+
+function renderComplexityRadar(complexity) {
+  if (!complexity) {
+    document.getElementById('complexityRadar').innerHTML = '<div style="text-align:center; color:#8e8e93; padding:40px;">暂无复杂度数据</div>';
+    return;
+  }
+
+  const option = {
+    tooltip: {},
+    radar: {
+      indicator: [
+        { name: '沟通频度', max: 10 },
+        { name: '业务配合度', max: 10 },
+        { name: '供应商配合度', max: 10 },
+        { name: '申报复杂度', max: 10 },
+        { name: '邮件频率', max: 10 },
+        { name: '增值作业', max: 10 }
+      ]
+    },
+    series: [{
+      type: 'radar',
+      data: [{
+        value: [
+          complexity.comm_freq,
+          complexity.biz_coop,
+          complexity.supplier_coop,
+          complexity.decl_complex,
+          Math.min(10, Math.floor(complexity.email_freq / 5)),
+          complexity.addon_freq
+        ],
+        name: '复杂度评分',
+        areaStyle: { color: 'rgba(0,122,255,0.3)' },
+        itemStyle: { color: '#007aff' }
+      }]
+    }]
+  };
+
+  initChart('complexityRadar', option);
+}
+
+function renderTransportCostChart(brandData) {
+  // 按运输方式分组数据
+  const transportModes = {};
+  brandData.forEach(item => {
+    const mode = item['运输工具'];
+    const date = item['启运日期'];
+    const cost = safeNum(item['实际每公斤国际物流费（CNY)']);
+
+    if (!transportModes[mode]) {
+      transportModes[mode] = {
+        dates: [],
+        costs: []
+      };
+    }
+    transportModes[mode].dates.push(date);
+    transportModes[mode].costs.push(cost);
+  });
+
+  // 计算各运输方式的平均成本并生成统计卡片
+  const statsContainer = document.getElementById('transportCostStats');
+  statsContainer.innerHTML = '';
+
+  const transportColors = {
+    '空运': '#007aff',
+    '海运': '#34c759',
+    '铁路': '#ff9500',
+    '公路': '#af52de'
+  };
+
+  Object.keys(transportModes).forEach(mode => {
+    const avgCost = transportModes[mode].costs.reduce((sum, c) => sum + c, 0) / transportModes[mode].costs.length;
+    const statCard = document.createElement('div');
+    statCard.className = 'stat-card';
+    statCard.innerHTML = `
+      <h4>${mode}平均成本</h4>
+      <p class="value">${formatCurrency(avgCost)}</p>
+    `;
+    statsContainer.appendChild(statCard);
+  });
+
+  // 生成多线图
+  const series = Object.keys(transportModes).map(mode => {
+    // 按日期排序
+    const data = transportModes[mode].dates.map((date, idx) => ({
+      date,
+      cost: transportModes[mode].costs[idx]
+    })).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    return {
+      name: mode,
+      type: 'line',
+      data: data.map(d => d.cost),
+      smooth: true,
+      itemStyle: { color: transportColors[mode] || '#007aff' },
+      emphasis: {
+        focus: 'series'
+      }
+    };
+  });
+
+  // 获取所有唯一日期
+  const allDates = [...new Set(Object.values(transportModes).flatMap(t => t.dates))].sort((a, b) => new Date(a) - new Date(b));
+
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross' }
+    },
+    legend: {
+      data: Object.keys(transportModes)
+    },
+    xAxis: {
+      type: 'category',
+      data: allDates,
+      axisLabel: { rotate: 45 }
+    },
+    yAxis: {
+      type: 'value',
+      name: '每公斤成本(CNY)',
+      axisLabel: { formatter: value => formatCurrency(value) }
+    },
+    series
+  };
+
+  initChart('transportCostChart', option);
+}
+
+function openPersonModal(person) {
+  const modal = document.getElementById('personModal');
+  const modalTitle = document.getElementById('personModalTitle');
+  modalTitle.textContent = `${person.name} - 工时构成分析`;
+
+  // 更新统计数据
+  const brandCount = brandContactMap[person.name]?.length || 0;
+  document.getElementById('personShipCount').textContent = formatNumber(person.count);
+  document.getElementById('personTotalValue').textContent = formatCurrency(person.value);
+  document.getElementById('personBrandCount').textContent = formatNumber(brandCount);
+  document.getElementById('personWorkloadScore').textContent = `${person.总工时.toFixed(1)}小时`;
+
+  // 渲染工时构成图
+  const workloadOption = {
+    tooltip: {
+      trigger: 'item',
+      formatter: function(params) {
+        const value = params.value || 0;
+        return `${params.name}<br/>${value.toFixed(1)}小时 (${params.percent}%)`;
+      }
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left'
+    },
+    series: [{
+      name: '工时构成',
+      type: 'pie',
+      radius: ['40%', '70%'],
+      data: [
+        { value: person.台账工时 || 0, name: '台账工时' },
+        { value: person.增值工时 || 0, name: '增值工时' },
+        { value: person.异常工时 || 0, name: '异常工时' },
+        { value: person.邮件工时 || 0, name: '邮件工时' },
+        { value: person.项目工时 || 0, name: '项目工时' }
+      ]
+    }]
+  };
+
+  initChart('personWorkloadChart', workloadOption);
+
+  // 渲染品牌明细表
+  const tbody = document.querySelector('#personBrandTable tbody');
+  tbody.innerHTML = '';
+
+  // 获取品牌对接人表中的所有品牌
+  const contactBrands = brandContactMap[person.name] || [];
+
+  // 构建品牌数据（合并台账数据和对接表数据）
+  const brandDataMap = {};
+
+  // 添加对接表中的所有品牌
+  contactBrands.forEach(brand => {
+    brandDataMap[brand] = {
+      name: brand,
+      count: 0,
+      value: 0,
+      hasShipment: false
+    };
+  });
+
+  // 合并台账数据中的品牌信息
+  Object.keys(person.brands).forEach(brand => {
+    if (!brandDataMap[brand]) {
+      brandDataMap[brand] = {
+        name: brand,
+        count: 0,
+        value: 0,
+        hasShipment: false
+      };
+    }
+    brandDataMap[brand].count = person.brands[brand];
+    brandDataMap[brand].hasShipment = true;
+
+    // 计算该品牌的总货值
+    const brandValue = shipmentsData
+      .filter(item => item['品牌名称'] === brand && item['物流对接人'] === person.name)
+      .reduce((sum, item) => sum + safeNum(item['报关金额(CNY)']), 0);
+    brandDataMap[brand].value = brandValue;
+  });
+
+  // 转换为数组并按运输笔数倒序排序
+  const brandList = Object.values(brandDataMap).sort((a, b) => b.count - a.count);
+
+  // 渲染表格
+  brandList.forEach(brand => {
+    const row = document.createElement('tr');
+    const percentage = person.count > 0 ? ((brand.count / person.count) * 100).toFixed(1) : '0.0';
+
+    // 设置行颜色：有运输记录的绿色，无运输记录的灰色
+    if (brand.hasShipment) {
+      row.style.backgroundColor = 'rgba(52, 199, 89, 0.1)';  // --success 浅色背景
+      row.style.borderLeft = '3px solid var(--success)';
+    } else {
+      row.style.backgroundColor = 'rgba(142, 142, 147, 0.1)';  // --muted 浅色背景
+      row.style.borderLeft = '3px solid var(--muted)';
+    }
+
+    row.innerHTML = `
+      <td>${brand.name}</td>
+      <td>${formatNumber(brand.count)}</td>
+      <td>${formatCurrency(brand.value)}</td>
+      <td>${percentage}%</td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  modal.classList.add('active');
+
+  setTimeout(resizeCharts, 100);
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+}
+
+// ====== 事件处理 ======
+function bindEvents() {
+  // 标签页切换
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      e.target.classList.add('active');
+      currentCategory = e.target.dataset.field;
+      renderCategoryTable();
+    });
+  });
+
+  // 模态框标签页切换
+  document.querySelectorAll('.modal-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      const modalTabs = e.target.closest('.modal-tabs').querySelectorAll('.modal-tab');
+      const modalContents = e.target.closest('.modal').querySelectorAll('.modal-tab-content');
+
+      modalTabs.forEach(t => t.classList.remove('active'));
+      modalContents.forEach(c => c.classList.remove('active'));
+
+      e.target.classList.add('active');
+      const tabName = e.target.dataset.tab;
+      document.getElementById(`${tabName}Tab`).classList.add('active');
+
+      setTimeout(resizeCharts, 100);
+    });
+  });
+
+  // 文件上传
+  document.getElementById('file-shipment').addEventListener('change', handleFileUpload);
+  document.getElementById('file-workload').addEventListener('change', handleWorkloadUpload);
+  document.getElementById('resetBtn').addEventListener('click', resetToSampleData);
+
+  // 运输总数卡片点击
+  document.getElementById('shipmentsCard').addEventListener('click', () => {
+    currentCategory = '品牌名称';
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('[data-field="品牌名称"]').classList.add('active');
+    renderCategoryTable();
+  });
+
+  // 窗口resize
+  window.addEventListener('resize', resizeCharts);
+
+  // 模态框外部点击关闭
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+  });
+}
+
+function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  if (file.name.endsWith('.xlsx')) {
+    reader.onload = function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, {type: 'array'});
+        const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+        shipmentsData = sheet;
+        loadBrandContactMap();  // 重新加载品牌对接人表
+        refreshAll();
+        showNotification('台账数据上传成功！', 'success');
+      } catch (error) {
+        showNotification('Excel文件读取失败：' + error.message, 'error');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.onload = function(e) {
+      try {
+        const text = e.target.result;
+        const lines = text.split('\n').filter(line => line.trim());
+        const headers = lines[0].split(',').map(h => h.trim());
+        const data = lines.slice(1).map(line => {
+          const values = line.split(',').map(v => v.trim());
+          const obj = {};
+          headers.forEach((header, index) => {
+            obj[header] = values[index] || '';
+          });
+          return obj;
+        });
+        shipmentsData = data;
+        loadBrandContactMap();  // 重新加载品牌对接人表
+        refreshAll();
+        showNotification('CSV数据上传成功！', 'success');
+      } catch (error) {
+        showNotification('CSV文件读取失败：' + error.message, 'error');
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+}
+
+function handleWorkloadUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const text = e.target.result;
+      const lines = text.split('\n').filter(line => line.trim());
+      const headers = lines[0].split(',').map(h => h.trim());
+
+      const newWorkloadData = {};
+      lines.slice(1).forEach(line => {
+        const values = line.split(',').map(v => v.trim());
+        const person = values[0];
+        if (person) {
+          newWorkloadData[person] = {
+            增值工时: safeNum(values[1]) || 0,
+            异常工时: safeNum(values[2]) || 0,
+            邮件工时: safeNum(values[3]) || 0,
+            项目工时: safeNum(values[4]) || 0
+          };
+        }
+      });
+
+      workloadData = newWorkloadData;
+      refreshAll();
+      showNotification('个人负荷数据上传成功！', 'success');
+    } catch (error) {
+      showNotification('个人负荷数据读取失败：' + error.message, 'error');
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+function resetToSampleData() {
+  shipmentsData = generateVirtualData();
+  workloadData = {};
+  refreshAll();
+  showNotification('已恢复示例数据', 'success');
+}
+
+function showNotification(message, type = 'info') {
+  // 创建通知元素
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${type === 'success' ? '#34c759' : type === 'error' ? '#ff3b30' : '#007aff'};
+    color: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    z-index: 10000;
+    font-weight: 500;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+  `;
+  notification.textContent = message;
+
+  document.body.appendChild(notification);
+
+  // 动画显示
+  setTimeout(() => {
+    notification.style.transform = 'translateX(0)';
+  }, 100);
+
+  // 3秒后移除
+  setTimeout(() => {
+    notification.style.transform = 'translateX(100%)';
+    setTimeout(() => {
+      document.body.removeChild(notification);
+    }, 300);
+  }, 3000);
+}
+
+// ====== 初始化 ======
+function refreshAll() {
+  renderOverview();
+  renderCategoryTable();
+  renderWorkloadSection();
+  setTimeout(resizeCharts, 100);
+}
+
+function init() {
+  // 生成初始数据
+  shipmentsData = generateVirtualData();
+  workloadData = {};
+
+  // 加载品牌对接人信息表
+  loadBrandContactMap();
+
+  // 绑定事件
+  bindEvents();
+
+  // 首次渲染
+  refreshAll();
+
+  console.log('国际电商物流看板V5.1初始化完成 - 混合工时算法 + 页面微调');
+}
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+
+</body>
+</html>

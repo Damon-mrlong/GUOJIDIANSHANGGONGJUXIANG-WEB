@@ -1,0 +1,8 @@
+{
+    "data_root": "F:\\claude code 项目\\国际电商工具箱\\工具箱系统文件夹",
+    "folders": {
+        "accrual": "计提台账数据",
+        "actual": "实际台账数据",
+        "rules": "规则文件"
+    }
+}

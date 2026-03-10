@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Build artifacts
+dist/
+build/
+*.exe
+*.spec
+
+# Node
+node_modules/
+web/node_modules/
+
+# IDE
+.vscode/
+.idea/
+
+# Agent/AI config
+.agent/
+.agents/
+.claude/
+CLAUDE.md
+
+# Output files
+输出汇总文件夹/
+
+# OS
+Thumbs.db
+.DS_Store

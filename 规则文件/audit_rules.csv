@@ -1,0 +1,13 @@
+﻿Type,Role_Index,Acc_Vendor,Acc_Amt,Act_Vendor,Act_Amt,Acc_Id,Acc_Person,Act_Id,Act_Self_Id
+快递物流,1,D,T,H,W,A,I,E,B
+区间调拨,1,Y,AJ|AK,AN,AO|AP,B,J,E,B
+区间调拨,2,Z,AL,AC,AQ,B,J,E,B
+区间调拨,3,AA,AP,AD,AT,B,J,E,B
+区间调拨,4,R,AN|AO,P,AR|AS,B,J,E,B
+区间调拨,5,E,AQ|AR,L,AU|AV,B,J,E,B
+一线入境,1,D,BK,H,BQ,A,L,E,B
+一线入境,2,AL,BG,AS,BI,A,L,E,B
+一线入境,3,AM,BH,AQ,BJ,A,L,E,B
+一线入境,4,AN,BI,AW,BK,A,L,E,B
+一线入境,5,AL,AU,AS,AU,A,L,E,B
+一线入境,6,AN,AW,AW,AY,A,L,E,B
