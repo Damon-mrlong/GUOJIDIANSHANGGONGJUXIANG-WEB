@@ -4,11 +4,27 @@
  */
 
 // ===================== 全局状态 =====================
-const PYODIDE_CDN = 'https://cdn.jsdelivr.net/pyodide/v0.27.0/full/';
+const PYODIDE_VERSION = '0.27.0';
+const DEFAULT_PYODIDE_BASE_URLS = [
+  '/pyodide/v' + PYODIDE_VERSION + '/full/',
+  'https://cdn.jsdelivr.net/pyodide/v' + PYODIDE_VERSION + '/full/',
+  'https://fastly.jsdelivr.net/pyodide/v' + PYODIDE_VERSION + '/full/'
+];
+
+function getPyodideBaseUrls() {
+  var custom = globalThis.__PYODIDE_BASE_URLS__;
+  if (Array.isArray(custom) && custom.length) {
+    return custom;
+  }
+  return DEFAULT_PYODIDE_BASE_URLS;
+}
 let pyodide = null;
 let pyodideReady = false;
+let pyodideInitPromise = null;
 let currentModule = null;
 let logger = null;
+let rulesDBReady = false;
+let rulesDBInitPromise = null;
 
 const NAV_ITEMS = [
   { id: 'home', icon: '🏠', label: '主页' },
@@ -67,6 +83,25 @@ class RulesDB {
 }
 const rulesDB = new RulesDB();
 
+function initRulesDBBackground() {
+  if (rulesDBInitPromise) return rulesDBInitPromise;
+
+  rulesDBInitPromise = rulesDB.init().then(function () {
+    rulesDBReady = true;
+    return true;
+  }).catch(function (err) {
+    rulesDBInitPromise = null;
+    throw err;
+  });
+
+  return rulesDBInitPromise;
+}
+
+async function ensureRulesDBReady() {
+  if (rulesDBReady) return;
+  await initRulesDBBackground();
+}
+
 // ===================== 日志管理 =====================
 class Logger {
   constructor() {
@@ -117,51 +152,127 @@ class Logger {
 }
 
 // ===================== Pyodide 引擎 =====================
-function loadScript(src) {
+function setEngineStatus(isReady, text) {
+  var dot = document.getElementById('engine-status-dot');
+  var label = document.getElementById('engine-status-text');
+  if (dot) {
+    dot.style.background = isReady ? 'var(--color-success)' : 'var(--color-warning)';
+    dot.style.boxShadow = isReady ? '0 0 6px var(--color-success)' : '0 0 6px var(--color-warning)';
+  }
+  if (label && text) label.textContent = text;
+}
+
+function loadScript(src, timeoutMs) {
+  timeoutMs = timeoutMs || 15000;
   return new Promise(function (resolve, reject) {
     var s = document.createElement('script');
-    s.src = src; s.onload = resolve;
-    s.onerror = function () { reject(new Error('加载失败: ' + src)); };
+    var done = false;
+    var timer = setTimeout(function () {
+      if (done) return;
+      done = true;
+      s.remove();
+      reject(new Error('加载超时: ' + src));
+    }, timeoutMs);
+
+    s.src = src;
+    s.onload = function () {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      resolve();
+    };
+    s.onerror = function () {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      s.remove();
+      reject(new Error('加载失败: ' + src));
+    };
+
     document.head.appendChild(s);
   });
 }
 
-async function initPyodide(onProgress) {
-  if (pyodideReady) return;
-  onProgress(10, '加载 Pyodide 运行时...');
-  await loadScript(PYODIDE_CDN + 'pyodide.js');
+async function setupPyodideWithFallback(onProgress) {
+  var urls = getPyodideBaseUrls();
+  var errors = [];
 
-  onProgress(30, '初始化 Python 环境...');
-  pyodide = await globalThis.loadPyodide({ indexURL: PYODIDE_CDN });
+  for (var i = 0; i < urls.length; i++) {
+    var base = urls[i];
+    if (!base.endsWith('/')) base += '/';
 
-  onProgress(50, '安装 Pandas...');
-  await pyodide.loadPackage('pandas');
-
-  onProgress(65, '安装 micropip...');
-  await pyodide.loadPackage('micropip');
-
-  onProgress(75, '安装 Openpyxl...');
-  await pyodide.runPythonAsync('import micropip\nawait micropip.install("openpyxl")');
-
-  onProgress(80, '拉取环境业务逻辑...');
-  var scripts = ['auto_audit.py', 'bill_parser.py', 'quote_calculator.py'];
-  for (var i = 0; i < scripts.length; i++) {
     try {
-      var r = await fetch('../' + scripts[i]);
-      if (!r.ok) r = await fetch(scripts[i]);
-      if (!r.ok) throw new Error('Not found');
-      var code = await r.text();
-      pyodide.FS.writeFile(scripts[i], code);
+      onProgress && onProgress(10, '加载 Pyodide 运行时... (' + base + ')');
+      await loadScript(base + 'pyodide.js');
+
+      onProgress && onProgress(30, '初始化 Python 环境...');
+      pyodide = await globalThis.loadPyodide({ indexURL: base });
+      logger && logger.success('Pyodide 节点可用: ' + base);
+      return base;
     } catch (e) {
-      console.warn('Failed to load ' + scripts[i], e);
+      errors.push(base + ' => ' + e.message);
+      logger && logger.warn('Pyodide 节点不可用，尝试下一个: ' + base);
+      if (globalThis.loadPyodide && pyodide === null) {
+        // 保持继续尝试，不中断
+      }
     }
   }
 
-  onProgress(90, '注册处理引擎...');
-  await registerEngines();
+  throw new Error('Pyodide 加载失败，已尝试节点: ' + errors.join(' | '));
+}
 
-  onProgress(100, '就绪');
-  pyodideReady = true;
+async function initPyodide(onProgress) {
+  if (pyodideReady) {
+    onProgress && onProgress(100, '就绪');
+    return;
+  }
+  if (pyodideInitPromise) {
+    await pyodideInitPromise;
+    onProgress && onProgress(100, '就绪');
+    return;
+  }
+
+  pyodideInitPromise = (async function () {
+    await setupPyodideWithFallback(onProgress);
+
+    onProgress && onProgress(50, '安装 Pandas...');
+    await pyodide.loadPackage('pandas');
+
+    onProgress && onProgress(65, '安装 micropip...');
+    await pyodide.loadPackage('micropip');
+
+    onProgress && onProgress(75, '安装 Openpyxl...');
+    await pyodide.runPythonAsync('import micropip\nawait micropip.install("openpyxl")');
+
+    onProgress && onProgress(80, '拉取环境业务逻辑...');
+    var scripts = ['auto_audit.py', 'bill_parser.py', 'quote_calculator.py'];
+    for (var i = 0; i < scripts.length; i++) {
+      try {
+        var r = await fetch('../' + scripts[i]);
+        if (!r.ok) r = await fetch(scripts[i]);
+        if (!r.ok) throw new Error('Not found');
+        var code = await r.text();
+        pyodide.FS.writeFile(scripts[i], code);
+      } catch (e) {
+        console.warn('Failed to load ' + scripts[i], e);
+      }
+    }
+
+    onProgress && onProgress(90, '注册处理引擎...');
+    await registerEngines();
+
+    onProgress && onProgress(100, '就绪');
+    pyodideReady = true;
+    setEngineStatus(true, '引擎就绪');
+  })();
+
+  try {
+    await pyodideInitPromise;
+  } finally {
+    if (pyodideReady) {
+      pyodideInitPromise = null;
+    }
+  }
 }
 
 async function registerEngines() {
@@ -183,6 +294,22 @@ function readFileFromVFS(path) {
   return pyodide.FS.readFile(path);
 }
 
+async function ensurePyodideReady(taskName) {
+  if (pyodideReady) return;
+
+  logger && logger.info('首次使用' + taskName + '，正在初始化引擎，请稍候...');
+  setEngineStatus(false, '引擎初始化中...');
+
+  await initPyodide(function (pct, msg) {
+    if (!logger) return;
+    if (pct === 100 || pct % 20 === 0) {
+      logger.info('[引擎初始化 ' + pct + '%] ' + msg);
+    }
+  });
+
+  logger && logger.success('引擎初始化完成，可开始处理。');
+}
+
 function downloadBlob(data, filename) {
   var blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
   var url = URL.createObjectURL(blob);
@@ -198,6 +325,7 @@ async function ensureWorkspaceDirs() {
 }
 
 async function syncRulesToWorkspace() {
+  await ensureRulesDBReady();
   await ensureWorkspaceDirs();
   await pyodide.runPythonAsync(
     "import os, glob\nfor d in ['/workspace/rules','/workspace/规则文件']:\n    os.makedirs(d, exist_ok=True)\n    for p in glob.glob(os.path.join(d, '*')):\n        if os.path.isfile(p):\n            os.remove(p)"
@@ -361,6 +489,7 @@ async function runModule(opts) {
   hideResult(opts.resultId);
 
   try {
+    await ensurePyodideReady('该模块');
     setLogCallback(function (msg) { logger.log(msg); });
 
     // 准备虚拟目录
@@ -546,6 +675,7 @@ function renderQuoteCalculator(c) {
     var searchInp = document.getElementById('calc-brand-search');
     try {
       // 检查规则文件是否已上传
+      await ensureRulesDBReady();
       var rules = await rulesDB.getAllFiles();
       var hasQuoteRule = rules.some(f => f.name.includes("空运报价费用规则"));
       if (!hasQuoteRule) {
@@ -555,6 +685,8 @@ function renderQuoteCalculator(c) {
         document.getElementById('calc-rules-text').style.color = '#ef4444';
         return;
       }
+
+      await ensurePyodideReady('报价计算');
 
       // 同步规则文件到工作区
       await syncRulesToWorkspace();
@@ -702,6 +834,7 @@ function renderRuleManagement(c) {
       var listEl = document.getElementById('rules-saved-list');
       if (!listEl) return;
       try {
+        await ensureRulesDBReady();
         var files = await rulesDB.getAllFiles();
         if (files.length === 0) {
           listEl.innerHTML = '<div style="color:#999;font-size:0.9rem;">暂无保存的规则文件</div>';
@@ -722,6 +855,7 @@ function renderRuleManagement(c) {
     // 将全局删除函数暴露到 window 以便 onclick 调用
     window.deleteRule = async function (name) {
       if (confirm("确定删除规则 " + name + " 吗？")) {
+        await ensureRulesDBReady();
         await rulesDB.deleteFile(name);
         logger.info("已删除规则: " + name);
         refreshSavedRules();
@@ -737,6 +871,7 @@ function renderRuleManagement(c) {
       newBtn.addEventListener('click', async function () {
         var files = uploadCtrl.getFiles();
         if (files.length === 0) { logger.warn("请先选择要上传的规则文件"); return; }
+        await ensureRulesDBReady();
         for (var i = 0; i < files.length; i++) {
           await rulesDB.saveFile(files[i]);
           logger.success("已保存规则: " + files[i].name);
@@ -901,23 +1036,28 @@ document.addEventListener('DOMContentLoaded', async function () {
   var mainApp = document.getElementById('main-app');
 
   try {
-    await rulesDB.init();
-    await initPyodide(function (pct, msg) {
-      loadingBar.style.width = pct + '%';
-      loadingStatus.textContent = msg;
-    });
+    loadingBar.style.width = '100%';
+    loadingStatus.textContent = '界面资源加载完成，Python 引擎将在首次使用时初始化';
 
     loadingScreen.classList.add('hide');
     mainApp.classList.remove('hidden');
     setTimeout(function () { mainApp.classList.add('visible'); }, 50);
 
     buildNav();
-    logger.info('Python 引擎初始化完成');
-    logger.info('Pandas + Openpyxl 已加载');
-    logger.success('系统就绪，可以开始使用');
 
     // 默认显示主页（与 .exe 一致）
     switchModule('home');
+
+    initRulesDBBackground().then(function () {
+      logger.info('本地规则存储已就绪');
+    }).catch(function (err) {
+      logger.warn('规则存储初始化失败，部分功能可能受限: ' + err.message);
+    });
+
+    logger.info('页面加载完成');
+    logger.info('首页已优先渲染，规则存储在后台初始化');
+    logger.info('已启用按需初始化，首次执行模块时再加载 Python 引擎');
+    logger.success('系统就绪，可以开始使用');
 
   } catch (err) {
     loadingStatus.textContent = '初始化失败: ' + err.message;
